@@ -1,0 +1,8 @@
+Degraded image,Restoration method,Parameter,MSE,PSNR (dB)
+Salt-and-pepper noise,None (degraded image),-,0.0166,17.81
+Salt-and-pepper noise,Average,3x3,0.0032,24.92
+Salt-and-pepper noise,Median,3x3,0.0010,30.10
+Salt-and-pepper noise,Spatial Wiener,3x3,0.0104,19.85
+Motion blur + Gaussian noise,None (degraded image),-,0.0049,23.06
+Motion blur + Gaussian noise,Inverse,|H| > 0.15,0.0030,25.28
+Motion blur + Gaussian noise,Frequency-domain Wiener,K = 0.02,0.0026,25.88
