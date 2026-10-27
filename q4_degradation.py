@@ -9,22 +9,12 @@ In the frequency domain:                 G(u,v) = H(u,v) F(u,v) + N(u,v)
 Run:  py q4_degradation.py
 Q5 and Q6 import make_salt_pepper() and make_blur_noise() from this file,
 so all questions use exactly the same degraded images.
-
-VIDEO SCRIPT (about 35 seconds) - read the "# SAY:" comments from top to bottom.
-  1. The degradation model g = h * f + n.
-  2. How salt and pepper is made, and its parameter (density).
-  3. The motion-blur kernel h (same as the lecture), blur in the frequency domain, + noise.
-  4. Compare the two degraded images and which details suffer most.
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 from q1_edge_detection import IMAGE_PATH, OUT_DIR, load_gray
-
-# SAY: "For restoration I first damage the image on purpose. The lecture model is
-#       g = h convolved with f, plus noise n. In the frequency domain the convolution becomes
-#       a multiplication: G = H times F plus N."
 
 # ---------------------------------------------------------------
 # Settings (change these and re-run to see the effect)
@@ -43,9 +33,6 @@ ZOOM = (slice(60, 220), slice(170, 330))   # crop (rows, cols) used to show fine
 # Each pixel is replaced by pure black (pepper, 0) with probability d/2,
 # by pure white (salt, 1) with probability d/2, and is left alone otherwise.
 # ---------------------------------------------------------------
-# SAY: "Salt and pepper is impulse noise. For every pixel I draw a random number. With
-#       probability d/2 the pixel becomes pure black, with d/2 pure white, otherwise it stays.
-#       Density d = 0.05 means 5 percent of the pixels are destroyed - like imnoise in MATLAB."
 def make_salt_pepper(img, density=SP_DENSITY, seed=RNG_SEED):
     rng = np.random.default_rng(seed)
     r = rng.random(img.shape)                  # one random number 0..1 per pixel
@@ -61,9 +48,6 @@ def make_salt_pepper(img, density=SP_DENSITY, seed=RNG_SEED):
 # smeared into a short line. h is that line, with all weights adding up to 1
 # (so the average brightness of the image does not change).
 # ---------------------------------------------------------------
-# SAY: "Motion blur happens when the camera moves during the exposure: each point becomes a
-#       short line. h is that line - 28 pixels long at 15 degrees, the same as fspecial
-#       ('motion', 28, 15) in the lecture. The weights add up to 1, so the brightness stays."
 def motion_psf(length=MOTION_LENGTH, angle=MOTION_ANGLE):
     size = length if length % 2 == 1 else length + 1      # odd size -> has a centre pixel
     psf = np.zeros((size, size))
@@ -91,9 +75,6 @@ def psf_to_otf(psf, shape):
 # Blurring by multiplying in the frequency domain is the same as convolving
 # with h in the spatial domain (lecture: convolution <-> multiplication).
 # ---------------------------------------------------------------
-# SAY: "I blur in the frequency domain, like the lecture code ifft2(H .* fft2(D)): take the
-#       Fourier transform, multiply by H, transform back. Then I add Gaussian noise with
-#       mean 0 and sigma 0.01, which moves every pixel a little up or down."
 def make_blur_noise(img, length=MOTION_LENGTH, angle=MOTION_ANGLE,
                     sigma=GAUSS_SIGMA, seed=RNG_SEED):
     """Returns (blurred + noisy image, blurred image without noise, H)."""
@@ -142,8 +123,6 @@ def show(img, sp, blur_only, blur_noise, psf):
 def show_parameter_effect(img):
     """Same image with weaker and stronger settings, for the 'which parameters
     control the amount of noise and blur' question."""
-    # SAY (show q4_parameters.png): "The density controls how many pixels are hit, the length
-    #       controls how far the blur smears, and sigma controls how strong the grain is."
     fig, axes = plt.subplots(2, 3, figsize=(15, 10), layout="constrained")
     for col, d in enumerate([0.01, 0.05, 0.20]):
         axes[0, col].imshow(make_salt_pepper(img, d)[ZOOM], cmap="gray", vmin=0, vmax=1)
@@ -163,17 +142,6 @@ def mse(a, b):
     return np.mean((255 * (a - b)) ** 2)
 
 
-# RESULT (cameraman) - SAY when comparing:
-#   Salt & pepper hits only 5 % of the pixels but hits them HARD (pure 0 or 1); the other 95 %
-#     are perfect, so edges and texture stay sharp. Small details (thin tripod legs, far
-#     buildings) can be hidden by a single dot.
-#   Motion blur changes EVERY pixel: neighbours are mixed along the 15 degree direction, and
-#     the noise adds fine grain everywhere. Fine texture and edges ACROSS the motion (hair,
-#     eye, ear, camera) are smeared away; flat areas (sky, coat) hardly change.
-#   MSE (0..255 scale): salt & pepper 1076.6, blur + noise 469.5 (blur alone 463.1, so the
-#     noise sigma = 0.01 adds very little error - the blur is the main damage).
-#   SAY: "Interesting: the salt-and-pepper image has more than TWICE the error, although it
-#         looks easier to recognise - MSE does not measure what our eyes see."
 if __name__ == "__main__":
     image = load_gray(IMAGE_PATH)
     sp = make_salt_pepper(image)

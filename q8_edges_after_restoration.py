@@ -4,12 +4,6 @@ Sobel on (1) the original, (2) the salt-and-pepper image, (3) the median-filtere
 
 Run:  py q8_edges_after_restoration.py
 Figures are shown on screen and saved in the "results" folder next to this file.
-
-VIDEO SCRIPT (about 35 seconds) - read the "# SAY:" comments from top to bottom.
-  1. Same Sobel, same threshold, three images.
-  2. False edges (red) and missed edges (blue).
-  3. Noise creates false edges; the median removes them but also some real edges.
-  4. Why preprocessing helps before edge detection.
 """
 
 import numpy as np
@@ -30,8 +24,6 @@ TOLERANCE = 1            # an edge counts as "matching" if it is within this man
 # ---------------------------------------------------------------
 # STEP 1: Sobel magnitude (same masks as Q1)
 # ---------------------------------------------------------------
-# SAY: "I apply the same Sobel operator from question 1 to three images: the original, the
-#       salt-and-pepper image, and the image after the 3 by 3 median filter."
 def sobel(img):
     return gradient_magnitude(apply_mask(img, SOBEL_X), apply_mask(img, SOBEL_Y))
 
@@ -42,9 +34,6 @@ def sobel(img):
 #   missed edges = edges of the original NOT found here       (lost)
 # A small tolerance allows an edge to be shifted by 1 pixel.
 # ---------------------------------------------------------------
-# SAY: "To compare fairly I use ONE threshold for all three, taken from the original image.
-#       Then I count FALSE edges - found here but not in the original - and MISSED edges -
-#       in the original but not found here. A 1-pixel shift is still counted as correct."
 def compare(ref_edges, edges, tol=TOLERANCE):
     ref_near = binary_dilation(ref_edges, iterations=tol)
     near = binary_dilation(edges, iterations=tol)
@@ -53,19 +42,6 @@ def compare(ref_edges, edges, tol=TOLERANCE):
     return false_edges, missed
 
 
-# RESULT (cameraman) - SAY when comparing:
-#   Original 4.2 % edge pixels | salt & pepper 20.2 %, of which 77 % are FALSE |
-#   median 3x3 3.3 %, false 0.2 %, but 11 % of the original edges are MISSED.
-#   SAY: "Noise is a disaster for edge detection: every dot is a sudden jump from grey to black
-#         or white - exactly what Sobel looks for - so each dot becomes a small square edge.
-#         77 percent of the detected edges are false."
-#   SAY: "After the median filter the false edges drop to almost zero, so restoration does
-#         remove false edges. But 11 percent of the real edges are lost too - small details
-#         like the camera buttons and parts of the ear, which the median treats as noise."
-#   SAY: "So preprocessing is useful: edge detectors are derivatives, and derivatives amplify
-#         every sudden change, noise or real. Removing the noise first means the detector
-#         reacts to real boundaries. Use the gentlest filter that removes the noise."
-# LIVE DEMO: set MAIN_SIZE = 5 in q5_spatial_filters.py -> false edges stay ~0, missed edges rise.
 if __name__ == "__main__":
     image = load_gray(IMAGE_PATH)
     noisy = make_salt_pepper(image)
@@ -89,8 +65,6 @@ if __name__ == "__main__":
         print(f"{name:16s} {100 * e.mean():10.1f} {f_pct:9.1f} {m_pct:9.1f}")
 
     # Figure 1: the three edge images side by side (what the question asks for)
-    # SAY (show q8_sobel.png): "Left the original edges, middle the noisy image full of dots,
-    #       right after the median filter - almost the same as the original."
     fig, axes = plt.subplots(2, 3, figsize=(15, 10), layout="constrained")
     for col, ((name, im), e, (_, _, f_pct, m_pct)) in enumerate(zip(inputs, edges, stats)):
         axes[0, col].imshow(np.clip(im, 0, 1), cmap="gray", vmin=0, vmax=1)
@@ -105,8 +79,6 @@ if __name__ == "__main__":
     fig.savefig(OUT_DIR / "q8_sobel.png", dpi=150, bbox_inches="tight")
 
     # Figure 2: zoom, with false edges in red and missed edges in blue
-    # SAY (show q8_false_missed.png): "Red squares are false edges from the noise, blue marks
-    #       are real edges the median filter removed."
     fig, axes = plt.subplots(1, 3, figsize=(15, 5.5), layout="constrained")
     for ax, (name, _), e, (false_e, missed, _, _) in zip(axes, inputs, edges, stats):
         rgb = np.zeros(e.shape + (3,))

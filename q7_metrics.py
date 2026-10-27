@@ -7,12 +7,6 @@ MSE and PSNR of every restoration method from Q5 and Q6, with the original as re
 
 Run:  py q7_metrics.py
 Saves the table as results/q7_table.csv (opens in Excel/Word) and a figure for the report.
-
-VIDEO SCRIPT (about 35 seconds) - read the "# SAY:" comments from top to bottom.
-  1. What the table contains and the two formulas.
-  2. Best method for each degradation.
-  3. Do the numbers agree with what we see?
-  4. Why a filter good for one noise fails on the other.
 """
 
 import csv
@@ -25,10 +19,6 @@ from q4_degradation import make_salt_pepper, make_blur_noise, ZOOM
 from q5_spatial_filters import (average_filter, median_filter_n, spatial_wiener,
                                 mse, psnr, MAIN_SIZE)
 from q6_inverse_wiener import inverse_filter, wiener_filter, INVERSE_T, WIENER_K
-
-# SAY: "Question 7 puts all restoration results in one table. Every method is run again with
-#       the parameters from questions 5 and 6, and compared with the ORIGINAL image using
-#       MSE - lower is better - and PSNR in decibels - higher is better."
 
 
 # ---------------------------------------------------------------
@@ -90,21 +80,6 @@ def show(img, rows):
     fig.savefig(OUT_DIR / "q7_comparison.png", dpi=150, bbox_inches="tight")
 
 
-# RESULT (cameraman) - the completed table:
-#   Salt & pepper:  none 1076.6 / 17.81 dB | average 3x3 209.4 / 24.92 | MEDIAN 3x3 63.5 / 30.10
-#                   | spatial Wiener 3x3 673.3 / 19.85
-#   Blur + noise:   none 469.5 / 21.41 dB | inverse |H|>0.1 336.2 / 22.87
-#                   | frequency-domain WIENER K=0.01 268.7 / 23.84
-#   SAY: "For salt and pepper the median filter is clearly best, plus 12 dB. For blur plus noise
-#         the frequency-domain Wiener filter is best, plus 2.4 dB, ahead of the inverse filter."
-#   SAY: "The numbers mostly agree with what we see. But not always: the average filter scores
-#         25 dB although it looks blurred and blotchy, and the inverse result has ringing that
-#         the small PSNR difference does not show. PSNR treats every pixel error the same and
-#         does not measure sharpness or patterns."
-#   SAY: "A filter only works when its model matches the noise. The median ignores OUTLIERS -
-#         salt and pepper is outliers, but blur is not. Inverse and Wiener UNDO a known H -
-#         salt and pepper has no H to undo. The spatial Wiener filter assumes small Gaussian
-#         noise, so it keeps the big impulses as if they were detail."
 if __name__ == "__main__":
     image = load_gray(IMAGE_PATH)
     rows = run_all(image)

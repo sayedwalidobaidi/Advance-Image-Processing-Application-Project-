@@ -7,12 +7,6 @@ Each filter is tried with several neighbourhood sizes.
 
 Run:  py q5_spatial_filters.py
 Figures are shown on screen and saved in the "results" folder next to this file.
-
-VIDEO SCRIPT (about 50 seconds) - read the "# SAY:" comments from top to bottom.
-  1. Mean filter = linear average (1/9 mask).
-  2. Median filter = sort and take the middle (non-linear).
-  3. Spatial Wiener = adapts to the local variance.
-  4. MSE / PSNR, then compare: which filter wins, edges, window size, "less noise = better?"
 """
 
 import numpy as np
@@ -35,9 +29,6 @@ MAIN_SIZE = 3            # size used in the main comparison figure
 # of the n x n pixels around it. Linear: every neighbour counts equally,
 # including the 0/1 noise pixels.
 # ---------------------------------------------------------------
-# SAY: "The mean filter uses the mask one ninth times a 3 by 3 block of ones, like slide 15.
-#       Each pixel is replaced by the average of its 9 neighbours. It is LINEAR: every
-#       neighbour counts equally - including the black and white noise dots."
 def average_filter(img, n):
     mask = np.ones((n, n)) / (n * n)             # weights sum to 1 -> brightness is kept
     return apply_mask(img, mask)
@@ -49,9 +40,6 @@ def average_filter(img, n):
 # Non-linear: an extreme value (0 or 1) ends up at the end of the sorted
 # list, so it is simply ignored instead of being averaged in.
 # ---------------------------------------------------------------
-# SAY: "The median filter sorts the 9 neighbours and takes the middle one. A white dot of 1.0
-#       goes to the END of the sorted list, so it is never chosen - it is ignored, not averaged.
-#       This is a NON-LINEAR filter."
 def median_filter_n(img, n):
     return median_filter(img, size=n, mode="nearest")
 
@@ -65,9 +53,6 @@ def median_filter_n(img, n):
 # Flat area (s2 ~ v2):   the fraction is ~0  -> output ~ mu   (strong smoothing)
 # Edge/detail (s2 >> v2): the fraction is ~1 -> output ~ g    (pixel kept)
 # ---------------------------------------------------------------
-# SAY: "The spatial Wiener filter, wiener2 in MATLAB, adapts to each window. It measures the
-#       local mean and the local variance. Where the variance is small - a flat area - it
-#       smooths strongly. Where the variance is large - an edge - it keeps the pixel."
 def spatial_wiener(img, n, noise_var=None):
     mu = uniform_filter(img, size=n, mode="nearest")
     s2 = uniform_filter(img ** 2, size=n, mode="nearest") - mu ** 2
@@ -82,9 +67,6 @@ def spatial_wiener(img, n, noise_var=None):
 #   MSE  = 1/(M N) * sum (I - I_hat)^2          on the 8-bit scale 0..255
 #   PSNR = 10 log10((2^n - 1)^2 / MSE), n = 8  -> (2^8 - 1)^2 = 255^2
 # ---------------------------------------------------------------
-# SAY: "To measure quality I use the lecture formulas. MSE is the average squared difference
-#       from the original - a large MSE means low quality. PSNR is 10 log10 of 255 squared over
-#       the MSE, in decibels - a HIGH PSNR means GOOD quality."
 def mse(ref, test):
     return np.mean((255 * (ref - np.clip(test, 0, 1))) ** 2)
 
@@ -106,7 +88,6 @@ def restore_all(noisy, sizes):
 # STEP 5: display and save
 # ---------------------------------------------------------------
 def show_main(img, noisy, results, n):
-    # SAY (show q5_filters.png): "Here are the three filters at 3 by 3, with the zoom below."
     panels = [("Original", img), (f"Salt & pepper", noisy)] + \
              [(f"{name} {n}x{n}", results[(name, n)]) for name in ("Average", "Median", "Spatial Wiener")]
     fig, axes = plt.subplots(2, 5, figsize=(20, 8.5), layout="constrained")
@@ -123,7 +104,6 @@ def show_main(img, noisy, results, n):
 
 
 def show_sizes(img, results, sizes):
-    # SAY (show q5_sizes.png): "And here the same filters with 3, 5 and 7 by 7 windows."
     names = ("Average", "Median", "Spatial Wiener")
     fig, axes = plt.subplots(len(names), len(sizes), figsize=(5 * len(sizes), 15), layout="constrained")
     for row, name in enumerate(names):
@@ -137,18 +117,6 @@ def show_sizes(img, results, sizes):
     fig.savefig(OUT_DIR / "q5_sizes.png", dpi=150, bbox_inches="tight")
 
 
-# RESULT (cameraman, density 0.05) - SAY when comparing:
-#   PSNR: noisy 17.8 dB | 3x3: average 24.9, MEDIAN 30.1, spatial Wiener 19.8 dB
-#         5x5: 25.1 / 27.8 / 22.5 | 7x7: 24.3 / 26.2 / 23.9
-#   SAY: "The MEDIAN 3x3 removes salt and pepper best - 30 dB, and every dot is gone - because
-#         the dots are extreme values and the median never picks them."
-#   SAY: "The AVERAGE filter does not remove the dots, it spreads them into grey blocks, and it
-#         blurs every edge because it mixes both sides of the edge."
-#   SAY: "The spatial WIENER filter is the worst here: a dot makes a huge local variance, so
-#         the filter thinks it is an EDGE and keeps it. It is designed for Gaussian noise."
-#   SAY: "Bigger windows: the median gets WORSE, 30 down to 26 dB - there is no extra noise to
-#         remove, so it only erases detail like the hair. So reducing noise does NOT always
-#         improve quality - every filter trades noise removal against detail."
 if __name__ == "__main__":
     image = load_gray(IMAGE_PATH)
     noisy = make_salt_pepper(image)

@@ -16,10 +16,8 @@ Edge detection, thresholding and image restoration in Python, applied to one gra
 
 Figures are saved in `results/`.
 
-Each file starts with a short video script, and `# SAY:` comments next to every step explain
-what the code does and why. `# RESULT` comments above the main block summarise the results
-on the cameraman image. Masks, formulas and default parameters follow the lecture slides
-(chapters 3–5), e.g. the motion blur `fspecial('motion', 28, 15)` and PSNR = 10·log₁₀(255² / MSE).
+Each file is split into numbered steps with short comments. Masks, formulas and default
+parameters follow the lecture slides (chapters 3–5), e.g. the motion blur `fspecial('motion', 28, 15)` and PSNR = 10·log₁₀(255² / MSE).
 
 ## Run
 
