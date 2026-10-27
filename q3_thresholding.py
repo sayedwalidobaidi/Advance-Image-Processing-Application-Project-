@@ -1,10 +1,8 @@
 """
 Assignment 2 - Part A - Question 3: Image thresholding
   1. Global threshold, value chosen by hand
-  2. Global threshold, value chosen from the histogram
-     (lecture slide 8: cumulative histogram, S = grey level below which P% of pixels lie;
-      Otsu's method is also shown for comparison)
-  3. Local threshold, max-min method (lecture slide 7): S(i,j) = (max + min) / 2 in an N x M window
+  2. Global threshold, value chosen from the histogram (cumulative histogram and Otsu)
+  3. Local threshold, max-min method
 
 Run:  py q3_thresholding.py
 Figures are shown on screen and saved in the "results" folder next to this file.
@@ -18,20 +16,19 @@ from skimage.filters import threshold_otsu
 from q1_edge_detection import IMAGE_PATH, OUT_DIR, load_gray
 
 # ---------------------------------------------------------------
-# Settings (change these and re-run to see the effect)
+# Settings
 # ---------------------------------------------------------------
-MANUAL_T = 0.5                       # manual global threshold (0..1)
-MANUAL_T_TRIALS = [0.3, 0.5, 0.7]    # to show what happens when T goes down / up
-PERCENT_BELOW = 80                   # lecture method: P% of pixels are below S
+MANUAL_T = 0.5
+MANUAL_T_TRIALS = [0.3, 0.5, 0.7]
+PERCENT_BELOW = 80                   # P% of pixels are below S
 PERCENT_TRIALS = [30, 50, 80]
-WINDOW_SIZE = 15                     # local max-min window N x M (odd number)
+WINDOW_SIZE = 15                     # local window N x N
 WINDOW_TRIALS = [3, 15, 31]
-MIN_CONTRAST = 0.15                  # local method: if max - min < this, the window is flat
+MIN_CONTRAST = 0.15                  # window is flat if max - min < this
 
 
 # ---------------------------------------------------------------
-# STEP 1: global threshold (lecture slide 7)
-#   I(i,j) = 1 if f(i,j) > S, else 0     -> one S for the whole image
+# STEP 1: global threshold, I = 1 if f > S
 # ---------------------------------------------------------------
 def global_threshold(img, s):
     return img > s
@@ -42,35 +39,30 @@ def global_threshold(img, s):
 # ---------------------------------------------------------------
 def histogram(img, bins=256):
     counts, edges = np.histogram(img, bins=bins, range=(0, 1))
-    levels = (edges[:-1] + edges[1:]) / 2          # centre grey level of each bin
+    levels = (edges[:-1] + edges[1:]) / 2
     return levels, counts
 
 
 def threshold_from_cumulative(img, percent):
-    """Lecture slide 8: build the cumulative histogram (in %) and read off the
-    grey level S where the curve reaches `percent`."""
+    """Grey level S where the cumulative histogram reaches `percent`."""
     levels, counts = histogram(img)
     cumulative = 100 * np.cumsum(counts) / counts.sum()
     return levels[np.searchsorted(cumulative, percent)]
 
 
-# Otsu (for comparison): tries every possible S and keeps the one that best
-# separates the histogram into two groups (largest between-class variance).
-# Works well when the histogram has two peaks (dark objects + bright background).
+# Otsu: the S that best separates the histogram into two groups
 
 
 # ---------------------------------------------------------------
-# STEP 3: local threshold, max-min method (lecture slide 7)
-#   S(i,j) = (max(i,j) + min(i,j)) / 2, max/min taken in an N x M window around (i,j)
+# STEP 3: local threshold, S = (max + min) / 2 in a window
 # ---------------------------------------------------------------
 def local_maxmin_threshold(img, size, min_contrast=0.0, fallback_t=None):
     local_max = maximum_filter(img, size=size, mode="nearest")
     local_min = minimum_filter(img, size=size, mode="nearest")
-    s = (local_max + local_min) / 2                # a different threshold for every pixel
+    s = (local_max + local_min) / 2
     result = img > s
     if min_contrast > 0:
-        # In a flat window max ~ min, so S ~ the pixel itself and the result is
-        # decided by tiny noise. There, fall back to the global threshold instead.
+        # flat window: use the global threshold instead
         flat = (local_max - local_min) < min_contrast
         result[flat] = img[flat] > fallback_t
     return result, s
@@ -123,7 +115,7 @@ def show_local(img, t_otsu):
     fig, axes = plt.subplots(2, 4, figsize=(16, 9.5), layout="constrained")
     first = local_maxmin_threshold(img, WINDOW_SIZE)[1]
     show_row(axes[0], img, [(f"Local threshold S(i,j)\n{WINDOW_SIZE}x{WINDOW_SIZE} window", first)] +
-             [(f"Max-min, {n}x{n} (lecture formula only)", local_maxmin_threshold(img, n)[0])
+             [(f"Max-min, {n}x{n} (formula only)", local_maxmin_threshold(img, n)[0])
               for n in WINDOW_TRIALS])
     show_row(axes[1], img, [("Original", img)] +
              [(f"Max-min, {n}x{n}\n+ contrast check ({MIN_CONTRAST})",

@@ -1,8 +1,8 @@
 """
 Assignment 2 - Part B - Question 5: Spatial filtering of the salt-and-pepper image
-  1. Average (mean) filter      - chapter 3 slide 15, MATLAB filter2(fspecial('average', n), g)
-  2. Median filter              - chapter 3 slide 19, MATLAB medfilt2(g, [n n])
-  3. Spatial (adaptive) Wiener  - MATLAB wiener2(g, [n n]) from the lecture code
+  1. Average (mean) filter
+  2. Median filter
+  3. Spatial (adaptive) Wiener filter
 Each filter is tried with several neighbourhood sizes.
 
 Run:  py q5_spatial_filters.py
@@ -17,41 +17,31 @@ from q1_edge_detection import IMAGE_PATH, OUT_DIR, load_gray, apply_mask
 from q4_degradation import make_salt_pepper, ZOOM
 
 # ---------------------------------------------------------------
-# Settings (change these and re-run to see the effect)
+# Settings
 # ---------------------------------------------------------------
-SIZES = [3, 5, 7]        # neighbourhood sizes n x n to try
-MAIN_SIZE = 3            # size used in the main comparison figure
+SIZES = [3, 5, 7]        # window sizes n x n
+MAIN_SIZE = 3            # size for the main figure
 
 
 # ---------------------------------------------------------------
-# STEP 1: average (mean) filter - chapter 3 slide 15
-# Mask = 1/9 x ones(3,3) (or 1/25 x ones(5,5)): each pixel becomes the MEAN
-# of the n x n pixels around it. Linear: every neighbour counts equally,
-# including the 0/1 noise pixels.
+# STEP 1: average filter, mask = ones(n, n) / n^2
 # ---------------------------------------------------------------
 def average_filter(img, n):
-    mask = np.ones((n, n)) / (n * n)             # weights sum to 1 -> brightness is kept
+    mask = np.ones((n, n)) / (n * n)
     return apply_mask(img, mask)
 
 
 # ---------------------------------------------------------------
-# STEP 2: median filter - chapter 3 slide 19
-# Sort the n x n pixels around each pixel and take the MIDDLE value.
-# Non-linear: an extreme value (0 or 1) ends up at the end of the sorted
-# list, so it is simply ignored instead of being averaged in.
+# STEP 2: median filter, middle value of the sorted window
 # ---------------------------------------------------------------
 def median_filter_n(img, n):
     return median_filter(img, size=n, mode="nearest")
 
 
 # ---------------------------------------------------------------
-# STEP 3: spatial (adaptive) Wiener filter, same formula as MATLAB wiener2
-#   local mean      mu(i,j)      = mean of the n x n window
-#   local variance  s2(i,j)      = mean of g^2 in the window - mu^2
-#   noise variance  v2           = average of all local variances (estimated)
+# STEP 3: spatial Wiener filter
 #   output = mu + max(s2 - v2, 0) / max(s2, v2) * (g - mu)
-# Flat area (s2 ~ v2):   the fraction is ~0  -> output ~ mu   (strong smoothing)
-# Edge/detail (s2 >> v2): the fraction is ~1 -> output ~ g    (pixel kept)
+#   mu, s2 = local mean and variance, v2 = noise variance (mean of s2)
 # ---------------------------------------------------------------
 def spatial_wiener(img, n, noise_var=None):
     mu = uniform_filter(img, size=n, mode="nearest")
@@ -63,9 +53,7 @@ def spatial_wiener(img, n, noise_var=None):
 
 
 # ---------------------------------------------------------------
-# STEP 4: quality measures - chapter 3 slide 24 (used again in Q7)
-#   MSE  = 1/(M N) * sum (I - I_hat)^2          on the 8-bit scale 0..255
-#   PSNR = 10 log10((2^n - 1)^2 / MSE), n = 8  -> (2^8 - 1)^2 = 255^2
+# STEP 4: MSE (0..255 scale) and PSNR = 10 log10(255^2 / MSE)
 # ---------------------------------------------------------------
 def mse(ref, test):
     return np.mean((255 * (ref - np.clip(test, 0, 1))) ** 2)

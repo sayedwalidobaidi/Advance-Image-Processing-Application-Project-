@@ -1,6 +1,6 @@
 """
 Assignment 2 - Part A - Question 1: Gradient-based edge detection
-Operators: Roberts, Prewitt, Sobel, Kirsch (masks from lecture chapter 4, slides 2-6).
+Operators: Roberts, Prewitt, Sobel, Kirsch.
 
 Run:  py q1_edge_detection.py
 Figures are shown on screen and saved in the "results" folder next to this file.
@@ -14,38 +14,36 @@ from scipy.ndimage import correlate
 from skimage import data, io, color, img_as_float
 
 # ---------------------------------------------------------------
-# Settings (change these and re-run to see the effect)
+# Settings
 # ---------------------------------------------------------------
-IMAGE_PATH = None        # e.g. r"D:\Master of EEE KBU\AIPA\my_image.jpg"; None = built-in "cameraman"
-EDGE_THRESHOLD = 0.25    # 0..1, applied to each normalised edge map to get a black/white edge image
-EDGE_PERCENT = 80        # lecture slide 8: S is chosen so that 80% of the gradient values are below it
+IMAGE_PATH = None        # None = built-in "cameraman" image
+EDGE_THRESHOLD = 0.25    # edge if normalised strength > T
+EDGE_PERCENT = 80        # histogram method: 80% of the values are below S
 
 OUT_DIR = Path(__file__).parent / "results"
 OUT_DIR.mkdir(exist_ok=True)
 
 
 # ---------------------------------------------------------------
-# STEP 1: load the image as grayscale, values in [0, 1]
+# STEP 1: load the image (grayscale, 0..1)
 # ---------------------------------------------------------------
 def load_gray(path):
     if path is None:
-        img = data.camera()                      # 512x512 grayscale test image
+        img = data.camera()
     else:
         img = io.imread(path)
-        if img.ndim == 3:                        # colour photo -> grayscale
+        if img.ndim == 3:
             img = color.rgb2gray(img[..., :3])
-    return img_as_float(img)                     # uint8 0..255 -> float 0..1
+    return img_as_float(img)
 
 
 # ---------------------------------------------------------------
-# STEP 2: the masks (same values as the lecture slides)
-# Gx responds to changes left->right  => shows VERTICAL edges
-# Gy responds to changes top->bottom  => shows HORIZONTAL edges
+# STEP 2: the masks (Gx -> vertical edges, Gy -> horizontal edges)
 # ---------------------------------------------------------------
 ROBERTS_1 = np.array([[0, 1],
-                      [-1, 0]])                  # diagonal (NW-SE direction)
+                      [-1, 0]])
 ROBERTS_2 = np.array([[1, 0],
-                      [0, -1]])                  # diagonal (SW-NE direction)
+                      [0, -1]])
 
 PREWITT_X = np.array([[-1, 0, 1],
                       [-1, 0, 1],
@@ -55,7 +53,7 @@ PREWITT_Y = np.array([[-1, -1, -1],
                       [1, 1, 1]])
 
 SOBEL_X = np.array([[-1, 0, 1],
-                    [-2, 0, 2],                  # centre row weighted x2 = built-in smoothing
+                    [-2, 0, 2],                  # weight 2 = smoothing
                     [-1, 0, 1]])
 SOBEL_Y = np.array([[1, 2, 1],
                     [0, 0, 0],
@@ -63,15 +61,14 @@ SOBEL_Y = np.array([[1, 2, 1],
 
 KIRSCH_G = np.array([[-3, -3, 5],
                      [-3, 0, 5],
-                     [-3, -3, 5]])               # lecture "horizontal (G)" mask
+                     [-3, -3, 5]])
 KIRSCH_D = np.array([[-3, -3, -3],
                      [-3, 0, -3],
-                     [5, 5, 5]])                 # lecture "vertical (D)" mask
+                     [5, 5, 5]])
 
 
 def kirsch_compass_masks():
-    """Kirsch is a compass operator: rotate the ring of 8 outer values
-    one step at a time to get 8 masks (N, NE, E, SE, S, SW, W, NW)."""
+    """Rotate the outer ring of the Kirsch mask to get 8 directions."""
     ring_positions = [(0, 0), (0, 1), (0, 2), (1, 2), (2, 2), (2, 1), (2, 0), (1, 0)]
     ring_values = [KIRSCH_G[r, c] for r, c in ring_positions]
     masks = []
@@ -85,9 +82,7 @@ def kirsch_compass_masks():
 
 
 # ---------------------------------------------------------------
-# STEP 3: apply a mask = slide it over the image and, at every pixel,
-# multiply the mask with the pixels under it and add them up.
-# correlate() does exactly that (no mask flipping, same as filter2 in MATLAB).
+# STEP 3: slide the mask over the image, multiply and add (correlation)
 # ---------------------------------------------------------------
 def apply_mask(img, mask):
     return correlate(img, mask.astype(float), mode="nearest")
@@ -95,21 +90,18 @@ def apply_mask(img, mask):
 
 # STEP 4: combine the two directions
 def gradient_magnitude(gx, gy):
-    """Edge strength |grad f| = sqrt(gx^2 + gy^2)  (lecture eq. V.6)."""
+    """Edge strength = sqrt(gx^2 + gy^2)."""
     return np.sqrt(gx ** 2 + gy ** 2)
 
 
 def normalise(x):
-    """Scale to 0..1 so operators with different mask weights can be compared."""
-    # WHY: Kirsch weights (5, -3) give values up to ~11, Roberts only ~1. Dividing by the
-    #      maximum puts all four on the same 0..1 scale before using one threshold.
+    """Scale to 0..1 so all operators use the same threshold."""
     x = np.abs(x)
     return x / x.max() if x.max() > 0 else x
 
 
 def cumulative_threshold(values, percent, bins=256):
-    """Lecture slide 8: build the cumulative histogram (in %) of `values` and return the
-    level S below which `percent` % of the values lie."""
+    """Level S below which `percent` % of the values lie (cumulative histogram)."""
     counts, edges = np.histogram(values, bins=bins, range=(0, values.max()))
     cumulative = 100 * np.cumsum(counts) / counts.sum()
     return edges[1:][np.searchsorted(cumulative, percent)]
@@ -127,8 +119,7 @@ def edge_detect(img):
     gx, gy = apply_mask(img, SOBEL_X), apply_mask(img, SOBEL_Y)
     results["Sobel"] = (gx, gy, gradient_magnitude(gx, gy))
 
-    # Kirsch: show the two lecture masks as directional responses,
-    # and use the MAX over all 8 compass masks as the edge strength.
+    # Kirsch: strength = max over the 8 compass masks
     gx, gy = apply_mask(img, KIRSCH_G), apply_mask(img, KIRSCH_D)
     compass = np.stack([apply_mask(img, m) for m in kirsch_compass_masks()])
     results["Kirsch"] = (gx, gy, compass.max(axis=0))
@@ -170,7 +161,7 @@ def show_side_by_side(results, threshold, percent):
     fig, axes = plt.subplots(3, 4, figsize=(16, 12), layout="constrained")
     for col, (name, (_, _, mag)) in enumerate(results.items()):
         m = normalise(mag)
-        edges = m > threshold                                   # I(i,j) = 1 if > S, else 0
+        edges = m > threshold
         s = cumulative_threshold(m, percent)
         edges_hist = m > s
         axes[0, col].imshow(m, cmap="gray")

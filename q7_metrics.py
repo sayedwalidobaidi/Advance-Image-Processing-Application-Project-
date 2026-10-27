@@ -2,11 +2,8 @@
 Assignment 2 - Part C - Question 7: Quantitative and visual comparison
 MSE and PSNR of every restoration method from Q5 and Q6, with the original as reference.
 
-  MSE  = (1 / (M N)) * sum (I(i,j) - I_hat(i,j))^2        chapter 3 slide 24, 0..255 scale
-  PSNR = 10 * log10((2^n - 1)^2 / MSE), n = 8 bits          higher is better (dB)
-
 Run:  py q7_metrics.py
-Saves the table as results/q7_table.csv (opens in Excel/Word) and a figure for the report.
+Saves the table as results/q7_table.csv.
 """
 
 import csv
@@ -22,7 +19,7 @@ from q6_inverse_wiener import inverse_filter, wiener_filter, INVERSE_T, WIENER_K
 
 
 # ---------------------------------------------------------------
-# STEP 1: run every method with the parameters chosen in Q5 and Q6
+# STEP 1: run every method
 # ---------------------------------------------------------------
 def run_all(img):
     n = MAIN_SIZE
@@ -62,7 +59,7 @@ def best_per_degradation(rows):
 
 
 # ---------------------------------------------------------------
-# STEP 3: the results side by side, so numbers and visual quality can be compared
+# STEP 3: show the results side by side
 # ---------------------------------------------------------------
 def show(img, rows):
     groups = [[r for r in rows if r[0] == deg] for deg in dict.fromkeys(r[0] for r in rows)]

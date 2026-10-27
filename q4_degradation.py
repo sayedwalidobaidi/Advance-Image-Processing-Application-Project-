@@ -3,12 +3,10 @@ Assignment 2 - Part B - Question 4: Image degradation
   1. Salt-and-pepper noise
   2. Motion blur + additive Gaussian noise
 
-Degradation model (lecture chapter 5):   g(x,y) = h(x,y) * f(x,y) + n(x,y)
-In the frequency domain:                 G(u,v) = H(u,v) F(u,v) + N(u,v)
+Model: g = h * f + n   (frequency domain: G = H F + N)
 
 Run:  py q4_degradation.py
-Q5 and Q6 import make_salt_pepper() and make_blur_noise() from this file,
-so all questions use exactly the same degraded images.
+Q5 and Q6 import the degraded images from this file.
 """
 
 import numpy as np
@@ -17,25 +15,23 @@ import matplotlib.pyplot as plt
 from q1_edge_detection import IMAGE_PATH, OUT_DIR, load_gray
 
 # ---------------------------------------------------------------
-# Settings (change these and re-run to see the effect)
+# Settings
 # ---------------------------------------------------------------
-SP_DENSITY = 0.05        # fraction of pixels hit by salt-and-pepper noise (lecture code uses 0.01)
-MOTION_LENGTH = 28       # same as the lecture: h = fspecial('motion', 28, 15)
-MOTION_ANGLE = 15        # direction of the motion in degrees (0 = horizontal)
-GAUSS_SIGMA = 0.01       # standard deviation of the Gaussian noise (image range is 0..1)
-RNG_SEED = 0             # fixed seed: the same "random" noise every run
+SP_DENSITY = 0.05        # share of pixels hit by salt and pepper
+MOTION_LENGTH = 28       # blur length in pixels
+MOTION_ANGLE = 15        # blur direction in degrees
+GAUSS_SIGMA = 0.01       # Gaussian noise std
+RNG_SEED = 0
 
-ZOOM = (slice(60, 220), slice(170, 330))   # crop (rows, cols) used to show fine detail
+ZOOM = (slice(60, 220), slice(170, 330))   # crop for the zoomed views
 
 
 # ---------------------------------------------------------------
-# STEP 1: salt-and-pepper noise (impulse noise, chapter 3 slide 6)
-# Each pixel is replaced by pure black (pepper, 0) with probability d/2,
-# by pure white (salt, 1) with probability d/2, and is left alone otherwise.
+# STEP 1: salt and pepper: black with probability d/2, white with d/2
 # ---------------------------------------------------------------
 def make_salt_pepper(img, density=SP_DENSITY, seed=RNG_SEED):
     rng = np.random.default_rng(seed)
-    r = rng.random(img.shape)                  # one random number 0..1 per pixel
+    r = rng.random(img.shape)
     noisy = img.copy()
     noisy[r < density / 2] = 0.0               # pepper
     noisy[(r >= density / 2) & (r < density)] = 1.0   # salt
@@ -43,26 +39,22 @@ def make_salt_pepper(img, density=SP_DENSITY, seed=RNG_SEED):
 
 
 # ---------------------------------------------------------------
-# STEP 2: the motion-blur degradation function h(x,y) (the PSF)
-# A camera moving L pixels in a straight line: every point of the scene is
-# smeared into a short line. h is that line, with all weights adding up to 1
-# (so the average brightness of the image does not change).
+# STEP 2: motion-blur kernel h: a line of length L, weights sum to 1
 # ---------------------------------------------------------------
 def motion_psf(length=MOTION_LENGTH, angle=MOTION_ANGLE):
-    size = length if length % 2 == 1 else length + 1      # odd size -> has a centre pixel
+    size = length if length % 2 == 1 else length + 1
     psf = np.zeros((size, size))
     c = size // 2
     theta = np.deg2rad(angle)
     for t in np.linspace(-(length - 1) / 2, (length - 1) / 2, 4 * length):
         x = c + t * np.cos(theta)
-        y = c - t * np.sin(theta)                 # minus: image rows grow downwards
+        y = c - t * np.sin(theta)
         psf[int(round(y)), int(round(x))] = 1.0
     return psf / psf.sum()
 
 
 def psf_to_otf(psf, shape):
-    """H(u,v): Fourier transform of h, padded to the image size and shifted so
-    that the centre of the PSF sits at pixel (0,0) (otherwise the image would move)."""
+    """H(u,v): FFT of h, padded to the image size and centred at (0,0)."""
     padded = np.zeros(shape)
     ph, pw = psf.shape
     padded[:ph, :pw] = psf
@@ -71,20 +63,16 @@ def psf_to_otf(psf, shape):
 
 
 # ---------------------------------------------------------------
-# STEP 3: blur (G = H F) and add Gaussian noise (+ N)
-# Blurring by multiplying in the frequency domain is the same as convolving
-# with h in the spatial domain (lecture: convolution <-> multiplication).
+# STEP 3: blur in the frequency domain (G = H F), then add noise
 # ---------------------------------------------------------------
 def make_blur_noise(img, length=MOTION_LENGTH, angle=MOTION_ANGLE,
                     sigma=GAUSS_SIGMA, seed=RNG_SEED):
-    """Returns (blurred + noisy image, blurred image without noise, H)."""
+    """Returns (blurred + noisy, blurred only, H)."""
     H = psf_to_otf(motion_psf(length, angle), img.shape)
     blurred = np.real(np.fft.ifft2(H * np.fft.fft2(img)))
     rng = np.random.default_rng(seed)
-    noisy = blurred + rng.normal(0.0, sigma, img.shape)   # mean 0, std sigma
+    noisy = blurred + rng.normal(0.0, sigma, img.shape)
     return noisy, blurred, H
-# WHY the dark strip at the image border: multiplying in the frequency domain is a CIRCULAR
-#     convolution, so the blur wraps around from one side of the image to the other.
 
 
 # ---------------------------------------------------------------
@@ -106,7 +94,6 @@ def show(img, sp, blur_only, blur_noise, psf):
     fig.suptitle("Original and degraded images (bottom row: zoomed detail)", fontsize=13)
     fig.savefig(OUT_DIR / "q4_degraded.png", dpi=150, bbox_inches="tight")
 
-    # The blur kernel itself, and blur vs blur+noise, to separate the two effects
     fig, axes = plt.subplots(1, 3, figsize=(15, 5), layout="constrained")
     axes[0].imshow(psf, cmap="gray")
     axes[0].set_title(f"Motion blur kernel h(x,y)\n{psf.shape[0]}x{psf.shape[1]}, length {MOTION_LENGTH}, "
@@ -121,8 +108,7 @@ def show(img, sp, blur_only, blur_noise, psf):
 
 
 def show_parameter_effect(img):
-    """Same image with weaker and stronger settings, for the 'which parameters
-    control the amount of noise and blur' question."""
+    """The degradations with other parameter values."""
     fig, axes = plt.subplots(2, 3, figsize=(15, 10), layout="constrained")
     for col, d in enumerate([0.01, 0.05, 0.20]):
         axes[0, col].imshow(make_salt_pepper(img, d)[ZOOM], cmap="gray", vmin=0, vmax=1)
@@ -138,7 +124,7 @@ def show_parameter_effect(img):
 
 
 def mse(a, b):
-    """Chapter 3 slide 24, on the 8-bit scale 0..255."""
+    """MSE on the 0..255 scale."""
     return np.mean((255 * (a - b)) ** 2)
 
 

@@ -2,10 +2,6 @@
 Assignment 2 - Part B - Question 6: Inverse and Wiener restoration (frequency domain)
 Input: the motion blur + Gaussian noise image from Q4, with its known H(u,v).
 
-  Model:          G = H F + N
-  Inverse filter: F_hat = G / H                       (only where |H| > threshold, as in the lecture)
-  Wiener filter:  F_hat = G * conj(H) / (|H|^2 + K)   (lecture code: K = 0.05)
-
 Run:  py q6_inverse_wiener.py
 Figures are shown on screen and saved in the "results" folder next to this file.
 """
@@ -18,19 +14,16 @@ from q4_degradation import make_blur_noise, GAUSS_SIGMA, MOTION_LENGTH, MOTION_A
 from q5_spatial_filters import mse, psnr
 
 # ---------------------------------------------------------------
-# Settings (change these and re-run to see the effect)
+# Settings
 # ---------------------------------------------------------------
-INVERSE_T = 0.1                         # inverse filter: only use frequencies where |H| > T (best PSNR here)
-INVERSE_T_TRIALS = [0.001, 0.1, 0.45]   # 0.45 is the value used in the lecture code
-WIENER_K = 0.01                         # Wiener: K ~ noise power / signal power (best PSNR here)
-WIENER_K_TRIALS = [0.0001, 0.01, 0.05]  # 0.05 is the value used in the lecture code
+INVERSE_T = 0.1                         # inverse: use only |H| > T
+INVERSE_T_TRIALS = [0.001, 0.1, 0.45]
+WIENER_K = 0.01                         # Wiener: K ~ noise / signal power
+WIENER_K_TRIALS = [0.0001, 0.01, 0.05]
 
 
 # ---------------------------------------------------------------
-# STEP 1: inverse filtering
-# G = H F + N   ->   G / H = F + N / H
-# Where |H| is tiny, N / H becomes huge, so the noise explodes.
-# The lecture's fix: keep only the frequencies where |H| > T, set the others to 0.
+# STEP 1: inverse filter, F = G / H where |H| > T (G / H = F + N / H)
 # ---------------------------------------------------------------
 def inverse_filter(g, H, threshold):
     G = np.fft.fft2(g)
@@ -41,11 +34,7 @@ def inverse_filter(g, H, threshold):
 
 
 # ---------------------------------------------------------------
-# STEP 2: Wiener filtering (lecture chapter 5, with Sn/Sf replaced by a constant K)
-#   F_hat = [ |H|^2 / (|H|^2 + K) ] * G / H  =  G * conj(H) / (|H|^2 + K)
-# Where |H| is large  -> |H|^2 >> K -> behaves like the inverse filter (undo the blur)
-# Where |H| is small  -> |H|^2 << K -> the gain goes to 0 (do not amplify noise)
-# K = 0 gives back the plain inverse filter.
+# STEP 2: Wiener filter, F = G * conj(H) / (|H|^2 + K)
 # ---------------------------------------------------------------
 def wiener_filter(g, H, k):
     G = np.fft.fft2(g)
@@ -76,7 +65,6 @@ def show_main(img, g, inv, wie):
 
 
 def show_spectrum(H, g):
-    """Why inverse filtering fails: |H| has many near-zero values (dark lines)."""
     fig, axes = plt.subplots(1, 2, figsize=(12, 5.5), layout="constrained")
     axes[0].imshow(np.log10(np.fft.fftshift(np.abs(H)) + 1e-6), cmap="gray")
     axes[0].set_title("log10 |H(u,v)|  (motion blur, centre = low frequencies)\n"
@@ -90,7 +78,7 @@ def show_spectrum(H, g):
 
 def show_parameters(img, g, blur_only, H):
     fig, axes = plt.subplots(2, 4, figsize=(18, 9.5), layout="constrained")
-    # Row 1: inverse filter. First panel: no noise, to prove the noise is the problem.
+    # Row 1: inverse filter (first panel without noise)
     clean_inv, _ = inverse_filter(blur_only, H, 1e-6)
     show_im(axes[0, 0], clean_inv,
             f"Inverse on blur ONLY (no noise)\nPSNR {psnr(img, clean_inv):.1f} dB", zoom=True)
