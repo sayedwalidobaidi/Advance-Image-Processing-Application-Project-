@@ -8,6 +8,13 @@ Assignment 2 - Part A - Question 3: Image thresholding
 
 Run:  py q3_thresholding.py
 Figures are shown on screen and saved in the "results" folder next to this file.
+
+VIDEO SCRIPT (about 50 seconds) - read the "# SAY:" comments from top to bottom.
+  1. Global threshold rule I = 1 if f > S.
+  2. Read the histogram: three peaks; where S should go.
+  3. Manual T up/down, cumulative 80 %, Otsu.
+  4. Local max-min: one S per pixel; effect of the window size; the flat-window problem.
+  5. Thresholding vs edge detection.
 """
 
 import numpy as np
@@ -30,16 +37,21 @@ MIN_CONTRAST = 0.15                  # local method: if max - min < this, the wi
 
 
 # ---------------------------------------------------------------
-# Step 1: global threshold (lecture slide 7)
+# STEP 1: global threshold (lecture slide 7)
 #   I(i,j) = 1 if f(i,j) > S, else 0     -> one S for the whole image
 # ---------------------------------------------------------------
+# SAY: "Thresholding turns the grey image into black and white. Global thresholding uses
+#       ONE value S for the whole image: a pixel becomes 1 if it is brighter than S, else 0."
 def global_threshold(img, s):
     return img > s
 
 
 # ---------------------------------------------------------------
-# Step 2: choose S from the histogram
+# STEP 2: choose S from the histogram
 # ---------------------------------------------------------------
+# SAY: "The histogram counts how many pixels have each grey level. The cumulative histogram
+#       adds them up from 0 to 100 percent. The lecture picks S where the curve reaches
+#       80 percent - so 80 percent of the pixels are darker than S."
 def histogram(img, bins=256):
     counts, edges = np.histogram(img, bins=bins, range=(0, 1))
     levels = (edges[:-1] + edges[1:]) / 2          # centre grey level of each bin
@@ -57,12 +69,17 @@ def threshold_from_cumulative(img, percent):
 # Otsu (for comparison): tries every possible S and keeps the one that best
 # separates the histogram into two groups (largest between-class variance).
 # Works well when the histogram has two peaks (dark objects + bright background).
+# SAY: "For comparison I also use Otsu's method. It tries every S and keeps the one that
+#       separates the histogram into two groups best, so it lands in the VALLEY between peaks."
 
 
 # ---------------------------------------------------------------
-# Step 3: local threshold, max-min method (lecture slide 7)
+# STEP 3: local threshold, max-min method (lecture slide 7)
 #   S(i,j) = (max(i,j) + min(i,j)) / 2, max/min taken in an N x M window around (i,j)
 # ---------------------------------------------------------------
+# SAY: "Local thresholding gives EVERY pixel its own threshold. I look at an N by N window
+#       around the pixel, take the brightest and darkest values, and use their middle:
+#       S = (max + min) / 2, exactly the lecture formula."
 def local_maxmin_threshold(img, size, min_contrast=0.0, fallback_t=None):
     local_max = maximum_filter(img, size=size, mode="nearest")
     local_min = minimum_filter(img, size=size, mode="nearest")
@@ -71,15 +88,20 @@ def local_maxmin_threshold(img, size, min_contrast=0.0, fallback_t=None):
     if min_contrast > 0:
         # In a flat window max ~ min, so S ~ the pixel itself and the result is
         # decided by tiny noise. There, fall back to the global threshold instead.
+        # SAY: "There is one problem: in a flat area like the sky, max and min are almost the
+        #       same, so S is almost the pixel itself and tiny noise decides black or white.
+        #       So when max minus min is small, I use the global threshold there instead."
         flat = (local_max - local_min) < min_contrast
         result[flat] = img[flat] > fallback_t
     return result, s
 
 
 # ---------------------------------------------------------------
-# Step 4: display and save
+# STEP 4: display and save
 # ---------------------------------------------------------------
 def show_histogram(img, t_manual, t_cum, t_otsu):
+    # SAY (show q3_histogram.png): "The histogram has three peaks: the dark coat near 0.1,
+    #       the grass near 0.6 and the sky near 0.8. A good S must be in a valley."
     levels, counts = histogram(img)
     cumulative = 100 * np.cumsum(counts) / counts.sum()
     fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
@@ -144,6 +166,20 @@ def show_comparison(img, t_cum, t_otsu):
     fig.savefig(OUT_DIR / "q3_comparison.png", dpi=150, bbox_inches="tight")
 
 
+# RESULT (cameraman) - SAY when comparing:
+#   Manual T: 0.3 -> 70 % white (clean: man black, background white); 0.5 -> 64 %, the grass
+#     starts to break into dots; 0.7 -> 32 %, the grass turns black. Higher T = more black pixels,
+#     and when T moves INTO a histogram peak, that whole region breaks into noise.
+#   Cumulative 80 %: S = 0.79 lands INSIDE the sky peak and splits the sky in two - a fixed
+#     percentage does not know where the valley is.
+#   Otsu: S = 0.40 lands in the valley automatically -> best object/background separation.
+#   Local 3x3 acts like an edge detector; 15x15 is the best balance (more detail on face and
+#     coat than any global method); 31x31 becomes blocky and more like a global threshold.
+#   SAY: "Local thresholding adapts to the brightness of each region, so it keeps local
+#         detail and handles uneven lighting - but it creates false detail in flat areas."
+#   SAY: "Thresholding divides the image into REGIONS by brightness - filled shapes.
+#         Edge detection finds only the BOUNDARIES where brightness changes - thin lines."
+# LIVE DEMO: change MANUAL_T to 0.7, or MIN_CONTRAST = 0 to see the pure lecture formula.
 if __name__ == "__main__":
     image = load_gray(IMAGE_PATH)
 
